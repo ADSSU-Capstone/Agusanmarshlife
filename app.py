@@ -27,7 +27,6 @@ from sklearn.ensemble import RandomForestClassifier
 
 import plotly.express as px
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 
 st.set_page_config(page_title="Conservation Behavior Analytics", layout="wide")
 
@@ -64,33 +63,11 @@ st.markdown(
     }
     div[data-testid="stMetricValue"] { color: #0f3352; font-weight: 700; }
     div[data-testid="stMetricLabel"] { color: #5b7387; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.6px; }
-    .panel {
-        background: #ffffff;
-        border: 1px solid #dbe4ee;
-        border-radius: 10px;
-        padding: 14px 16px;
-        box-shadow: 0 1px 3px rgba(15,51,82,0.06);
-        margin-bottom: 10px;
-    }
-    .panel-title {
-        color: #0f3352; font-size: 0.72rem; font-weight: 700;
-        text-transform: uppercase; letter-spacing: 0.8px;
-        margin-bottom: 8px;
-    }
     .chip {
         display: inline-block; padding: 3px 10px; border-radius: 12px;
         background: #e8eef5; color: #0f3352; font-size: 0.72rem;
         font-weight: 600; margin-right: 6px; margin-bottom: 4px;
     }
-    .seg-row {
-        display: flex; align-items: center; gap: 10px;
-        padding: 9px 12px; border-radius: 8px; background: #f8fafc;
-        border-left: 4px solid #0f3352; margin-bottom: 6px;
-    }
-    .seg-name { flex: 1; font-weight: 600; color: #0f3352; font-size: 0.86rem; }
-    .seg-bar { flex: 2; height: 8px; background: #e3eaf2; border-radius: 4px; overflow: hidden; }
-    .seg-fill { height: 100%; border-radius: 4px; }
-    .seg-val { width: 48px; text-align: right; font-weight: 700; color: #0f3352; font-size: 0.84rem; }
     .open-card {
         background: #ffffff; border-left: 4px solid #2e86c1;
         border-radius: 6px; padding: 11px 14px; margin-bottom: 8px;
@@ -183,7 +160,6 @@ CLUSTER_NAME_BY_RANK = [
 DISTANCE_ORDER = ["Within marsh area", "Less than 1 km", "1-5 km", "6-10 km", "More than 10 km"]
 PALETTE = ["#0f3352", "#2e86c1", "#48c9b0", "#f39c12", "#a93226", "#7d3c98", "#1e8449"]
 
-
 def clean_text(value):
     if value is None:
         return ""
@@ -193,10 +169,8 @@ def clean_text(value):
     text = "".join(ch for ch in text if unicodedata.category(ch)[0] != "C")
     return re.sub(r"\s+", " ", text).strip()
 
-
 def normalize_label(value):
     return clean_text(value).lower()
-
 
 def likert_to_num(value):
     key = normalize_label(value)
@@ -204,19 +178,16 @@ def likert_to_num(value):
         return np.nan
     return LIKERT_MAP.get(key, np.nan)
 
-
 def risk_band(composite):
     for name, low, high, color in RISK_BANDS:
         if low <= composite <= high:
             return name, color
     return "Unclassified", "#7f8c8d"
 
-
 def parse_upload(uploaded):
     if uploaded.name.lower().endswith(".csv"):
         return pd.read_csv(uploaded)
     return pd.read_excel(uploaded, sheet_name=0)
-
 
 def preprocess(raw):
     df = raw.copy()
@@ -281,18 +252,13 @@ def preprocess(raw):
     df["TARGET_LABEL"] = df["TARGET_RAW"].apply(normalize_label).map(TARGET_SINGLE_MAP)
     return df
 
-
 def build_cluster_matrix(df):
     features = df[SECTIONS].copy()
-    demo = pd.get_dummies(
-        df[["AGE", "GENDER", "EDUCATION", "OCCUPATION", "DISTANCE_NORM"]],
-        drop_first=False,
-    )
+    demo = pd.get_dummies(df[["AGE", "GENDER", "EDUCATION", "OCCUPATION", "DISTANCE_NORM"]], drop_first=False)
     matrix = pd.concat([features, demo], axis=1)
     matrix = matrix.fillna(matrix.mean(numeric_only=True)).fillna(0)
     scaler = StandardScaler()
     return scaler.fit_transform(matrix)
-
 
 def k_search(scaled, k_min=2, k_max=6):
     rows, inertias = [], {}
@@ -308,11 +274,9 @@ def k_search(scaled, k_min=2, k_max=6):
         })
     return pd.DataFrame(rows), inertias
 
-
 def run_kmeans(scaled, k):
     km = KMeans(n_clusters=k, init="k-means++", n_init=10, random_state=42)
     return km.fit_predict(scaled)
-
 
 def profile_clusters(df, labels):
     frame = df.copy()
@@ -330,25 +294,18 @@ def profile_clusters(df, labels):
     ]
     return frame, profile
 
-
 def classify(frame):
     usable = frame[frame["TARGET_LABEL"].notna()].copy()
     demo = pd.get_dummies(usable[["AGE", "GENDER", "EDUCATION", "OCCUPATION", "DISTANCE_NORM"]])
-    X = pd.concat(
-        [usable[SECTIONS].reset_index(drop=True), demo.reset_index(drop=True)], axis=1
-    ).fillna(0)
+    X = pd.concat([usable[SECTIONS].reset_index(drop=True), demo.reset_index(drop=True)], axis=1).fillna(0)
     y = usable["TARGET_LABEL"].map({"High": 1, "Low/Neutral": 0}).reset_index(drop=True)
 
     if y.nunique() < 2 or len(y) < 20:
         return None, None, None, None, None
 
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, stratify=y, random_state=42
-    )
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, stratify=y, random_state=42)
     models = {
-        "Decision Tree": DecisionTreeClassifier(
-            criterion="gini", random_state=42, max_depth=6, min_samples_leaf=3
-        ),
+        "Decision Tree": DecisionTreeClassifier(criterion="gini", random_state=42, max_depth=6, min_samples_leaf=3),
         "Naive Bayes": GaussianNB(),
         "Random Forest": RandomForestClassifier(n_estimators=100, random_state=42),
     }
@@ -384,22 +341,15 @@ def classify(frame):
         fi["Cumulative"] = fi["Importance"].cumsum().round(4)
     return metrics, fi, roc_data, cm_data, preds
 
-
 def demographic_tests(frame):
     usable = frame.dropna(subset=["PARTICIPATION_SCORE"]).copy()
     results = []
     for group_col, label in [("AGE", "Age"), ("EDUCATION", "Education"), ("OCCUPATION", "Occupation")]:
-        groups = [
-            g["PARTICIPATION_SCORE"].dropna().values
-            for _, g in usable.groupby(group_col) if len(g) > 1
-        ]
+        groups = [g["PARTICIPATION_SCORE"].dropna().values for _, g in usable.groupby(group_col) if len(g) > 1]
         if len(groups) > 1:
             f_stat, p_val = stats.f_oneway(*groups)
-            results.append({
-                "Test": f"ANOVA: {label} vs Participation",
-                "Statistic": round(f_stat, 4),
-                "p-value": round(p_val, 4),
-            })
+            results.append({"Test": f"ANOVA: {label} vs Participation", "Statistic": round(f_stat, 4), "p-value": round(p_val, 4)})
+    
     gender_norm = usable["GENDER"].apply(normalize_label)
     female = gender_norm.str.startswith("babaye")
     male = gender_norm.str.startswith("lalaki")
@@ -409,11 +359,8 @@ def demographic_tests(frame):
         scores = usable.loc[mask, "PARTICIPATION_SCORE"]
         if len(binary) > 2:
             r, p_val = stats.pointbiserialr(binary, scores)
-            results.append({
-                "Test": "Point-biserial: Gender vs Participation",
-                "Statistic": round(r, 4),
-                "p-value": round(p_val, 4),
-            })
+            results.append({"Test": "Point-biserial: Gender vs Participation", "Statistic": round(r, 4), "p-value": round(p_val, 4)})
+            
     distance_codes = usable["DISTANCE_NORM"].map({
         "within marsh area": 1, "less than 1 km": 2, "1-5 km": 3,
         "6-10 km": 4, "more than 10 km": 5,
@@ -421,18 +368,12 @@ def demographic_tests(frame):
     mask = distance_codes.notna() & usable["PARTICIPATION_SCORE"].notna()
     if mask.sum() > 3:
         rho, p_val = stats.spearmanr(distance_codes[mask], usable.loc[mask, "PARTICIPATION_SCORE"])
-        results.append({
-            "Test": "Spearman: Distance vs Participation",
-            "Statistic": round(rho, 4),
-            "p-value": round(p_val, 4),
-        })
+        results.append({"Test": "Spearman: Distance vs Participation", "Statistic": round(rho, 4), "p-value": round(p_val, 4)})
+        
     out = pd.DataFrame(results)
     if not out.empty:
-        out["Significance"] = out["p-value"].apply(
-            lambda p: "p < 0.01" if p < 0.01 else ("p < 0.05" if p < 0.05 else "n.s.")
-        )
+        out["Significance"] = out["p-value"].apply(lambda p: "p < 0.01" if p < 0.01 else ("p < 0.05" if p < 0.05 else "n.s."))
     return out
-
 
 st.sidebar.header("Data Source")
 uploaded = st.sidebar.file_uploader("Upload CSV or Excel", type=["csv", "xlsx", "xls"])
@@ -463,14 +404,10 @@ st.markdown(
 
 k1, k2, k3, k4, k5 = st.columns(5)
 k1.metric("Respondents", len(df))
-k2.metric("Awareness", round(df["AWARENESS_SCORE"].mean(), 2),
-          round(df["AWARENESS_SCORE"].std(), 2))
-k3.metric("Attitude", round(df["ATTITUDE_SCORE"].mean(), 2),
-          round(df["ATTITUDE_SCORE"].std(), 2))
-k4.metric("Behavior", round(df["BEHAVIOR_SCORE"].mean(), 2),
-          round(df["BEHAVIOR_SCORE"].std(), 2))
-k5.metric("Participation", round(df["PARTICIPATION_SCORE"].mean(), 2),
-          round(df["PARTICIPATION_SCORE"].std(), 2))
+k2.metric("Awareness", round(df["AWARENESS_SCORE"].mean(), 2), round(df["AWARENESS_SCORE"].std(), 2))
+k3.metric("Attitude", round(df["ATTITUDE_SCORE"].mean(), 2), round(df["ATTITUDE_SCORE"].std(), 2))
+k4.metric("Behavior", round(df["BEHAVIOR_SCORE"].mean(), 2), round(df["BEHAVIOR_SCORE"].std(), 2))
+k5.metric("Participation", round(df["PARTICIPATION_SCORE"].mean(), 2), round(df["PARTICIPATION_SCORE"].std(), 2))
 
 tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
     "Respondent Profile", "Conservation Measures", "Behavioral Segments",
@@ -484,32 +421,23 @@ with tab1:
         age_counts.columns = ["Age Group", "Count"]
         if not age_counts.empty:
             age_counts["Share"] = (age_counts["Count"] / age_counts["Count"].sum() * 100).round(1)
-            fig = px.bar(age_counts, x="Age Group", y="Count", color="Share",
-                         color_continuous_scale="Blues", text="Count",
-                         title="Age Distribution")
+            fig = px.bar(age_counts, x="Age Group", y="Count", color="Share", color_continuous_scale="Blues", text="Count", title="Age Distribution")
             fig.update_traces(textposition="outside")
             st.plotly_chart(fig, use_container_width=True)
     with c2:
         gender_counts = df["GENDER"].replace("", np.nan).dropna().value_counts().reset_index()
         gender_counts.columns = ["Gender", "Count"]
         if not gender_counts.empty:
-            fig = px.pie(gender_counts, names="Gender", values="Count", hole=0.55,
-                         color_discrete_sequence=["#0f3352", "#2e86c1", "#5dade2", "#a9cce3"],
-                         title="Gender Distribution")
+            fig = px.pie(gender_counts, names="Gender", values="Count", hole=0.55, color_discrete_sequence=["#0f3352", "#2e86c1", "#5dade2", "#a9cce3"], title="Gender Distribution")
             fig.update_traces(textinfo="percent+label")
             st.plotly_chart(fig, use_container_width=True)
     with c3:
         dist_counts = df["DISTANCE_ORDERED"].replace("", np.nan).dropna().value_counts().reset_index()
         dist_counts.columns = ["Distance", "Count"]
         if not dist_counts.empty:
-            dist_counts["Order"] = dist_counts["Distance"].apply(
-                lambda v: DISTANCE_ORDER.index(v) if v in DISTANCE_ORDER else 99
-            )
+            dist_counts["Order"] = dist_counts["Distance"].apply(lambda v: DISTANCE_ORDER.index(v) if v in DISTANCE_ORDER else 99)
             dist_counts = dist_counts.sort_values("Order")
-            fig = go.Figure(go.Bar(
-                x=dist_counts["Count"], y=dist_counts["Distance"],
-                orientation="h", marker_color="#2e86c1", text=dist_counts["Count"],
-            ))
+            fig = go.Figure(go.Bar(x=dist_counts["Count"], y=dist_counts["Distance"], orientation="h", marker_color="#2e86c1", text=dist_counts["Count"]))
             fig.update_layout(title="Distance from Marsh", yaxis_title="", xaxis_title="Count")
             st.plotly_chart(fig, use_container_width=True)
 
@@ -519,37 +447,25 @@ with tab1:
         edu_counts.columns = ["Education", "Count"]
         if not edu_counts.empty:
             edu_counts["Share"] = (edu_counts["Count"] / df["EDUCATION"].replace("", np.nan).notna().sum() * 100).round(1)
-            fig = px.bar(edu_counts, x="Count", y="Education", orientation="h",
-                         color="Share", color_continuous_scale="Teal", text="Count",
-                         title="Educational Attainment")
+            fig = px.bar(edu_counts, x="Count", y="Education", orientation="h", color="Share", color_continuous_scale="Teal", text="Count", title="Educational Attainment")
             fig.update_traces(textposition="outside")
             st.plotly_chart(fig, use_container_width=True)
     with c5:
         occ_counts = df["OCCUPATION"].replace("", np.nan).dropna().value_counts().reset_index().head(8)
         occ_counts.columns = ["Occupation", "Count"]
         if not occ_counts.empty:
-            fig = px.treemap(occ_counts, path=["Occupation"], values="Count",
-                             color="Count", color_continuous_scale="Blues",
-                             title="Occupation Composition")
+            fig = px.treemap(occ_counts, path=["Occupation"], values="Count", color="Count", color_continuous_scale="Blues", title="Occupation Composition")
             st.plotly_chart(fig, use_container_width=True)
 
     st.markdown("<div class='panel-title'>Demographic Cross-Tabulation</div>", unsafe_allow_html=True)
-    cross = pd.crosstab(
-        df["DISTANCE_ORDERED"].replace("", np.nan),
-        df["GENDER"].replace("", np.nan),
-    )
+    cross = pd.crosstab(df["DISTANCE_ORDERED"].replace("", np.nan), df["GENDER"].replace("", np.nan))
     if not cross.empty:
         st.dataframe(cross, use_container_width=True)
 
     st.markdown("<div class='panel-title'>Target Distribution by Distance</div>", unsafe_allow_html=True)
-    target_dist = pd.crosstab(
-        df["DISTANCE_ORDERED"].replace("", np.nan),
-        df["TARGET_LABEL"].replace("", np.nan),
-        normalize="index",
-    ).mul(100).round(1)
+    target_dist = pd.crosstab(df["DISTANCE_ORDERED"].replace("", np.nan), df["TARGET_LABEL"].replace("", np.nan), normalize="index").mul(100).round(1)
     if not target_dist.empty:
-        fig = px.imshow(target_dist, text_auto=True, color_continuous_scale="Blues",
-                        labels=dict(x="Likelihood", y="Distance", color="Percent"))
+        fig = px.imshow(target_dist, text_auto=True, color_continuous_scale="Blues", labels=dict(x="Likelihood", y="Distance", color="Percent"))
         st.plotly_chart(fig, use_container_width=True)
 
 with tab2:
@@ -565,17 +481,12 @@ with tab2:
         st.dataframe(summary, use_container_width=True)
     with c2:
         corr = df[SECTIONS].corr().round(3)
-        fig = px.imshow(corr, text_auto=True, color_continuous_scale="RdBu_r",
-                        zmin=-1, zmax=1, title="Inter-Construct Correlation",
-                        x=[SECTION_LABELS[c] for c in SECTIONS],
-                        y=[SECTION_LABELS[c] for c in SECTIONS])
+        fig = px.imshow(corr, text_auto=True, color_continuous_scale="RdBu_r", zmin=-1, zmax=1, title="Inter-Construct Correlation", x=[SECTION_LABELS[c] for c in SECTIONS], y=[SECTION_LABELS[c] for c in SECTIONS])
         st.plotly_chart(fig, use_container_width=True)
 
     fig = go.Figure()
     for i, col in enumerate(SECTIONS):
-        fig.add_trace(go.Violin(y=df[col].dropna(), name=SECTION_LABELS[col],
-                                box_visible=True, meanline_visible=True,
-                                fillcolor=PALETTE[i], line_color=PALETTE[i], opacity=0.7))
+        fig.add_trace(go.Violin(y=df[col].dropna(), name=SECTION_LABELS[col], box_visible=True, meanline_visible=True, fillcolor=PALETTE[i], line_color=PALETTE[i], opacity=0.7))
     fig.update_layout(title="Score Distributions", yaxis_title="Score", showlegend=False)
     st.plotly_chart(fig, use_container_width=True)
 
@@ -585,22 +496,15 @@ with tab2:
         target_counts.columns = ["Likelihood", "Count"]
         if not target_counts.empty:
             target_counts["Share"] = (target_counts["Count"] / target_counts["Count"].sum() * 100).round(1)
-            fig = px.pie(target_counts, names="Likelihood", values="Count", hole=0.5,
-                         color="Likelihood",
-                         color_discrete_map={"High": "#1e8449", "Low/Neutral": "#b9770e"},
-                         title="Binarized Future Participation")
+            fig = px.pie(target_counts, names="Likelihood", values="Count", hole=0.5, color="Likelihood", color_discrete_map={"High": "#1e8449", "Low/Neutral": "#b9770e"}, title="Binarized Future Participation")
             fig.update_traces(textinfo="percent+label")
             st.plotly_chart(fig, use_container_width=True)
     with c4:
-        fig = px.box(df, x="DISTANCE_ORDERED", y="PARTICIPATION_SCORE",
-                     color="DISTANCE_ORDERED", color_discrete_sequence=PALETTE,
-                     title="Participation by Distance")
+        fig = px.box(df, x="DISTANCE_ORDERED", y="PARTICIPATION_SCORE", color="DISTANCE_ORDERED", color_discrete_sequence=PALETTE, title="Participation by Distance")
         fig.update_layout(showlegend=False, xaxis_title="", yaxis_title="Participation Score")
         st.plotly_chart(fig, use_container_width=True)
 
-    st.caption(
-        "Section scores aggregate the Likert items. Reverse-coded items are inverted before averaging."
-    )
+    st.caption("Section scores aggregate the Likert items. Reverse-coded items are inverted before averaging.")
 
 with tab3:
     scaled = build_cluster_matrix(df)
@@ -608,20 +512,16 @@ with tab3:
 
     c1, c2, c3 = st.columns([1, 1, 1])
     with c1:
-        fig = go.Figure(go.Scatter(x=list(inertias.keys()), y=list(inertias.values()),
-                                   mode="lines+markers", line=dict(color="#0f3352", width=2.5),
-                                   marker=dict(size=9)))
+        fig = go.Figure(go.Scatter(x=list(inertias.keys()), y=list(inertias.values()), mode="lines+markers", line=dict(color="#0f3352", width=2.5), marker=dict(size=9)))
         fig.update_layout(title="Elbow Curve", xaxis_title="k", yaxis_title="Inertia")
         st.plotly_chart(fig, use_container_width=True)
     with c2:
-        fig = px.line(k_table, x="k", y="Silhouette", markers=True,
-                      color_discrete_sequence=["#2e86c1"], title="Silhouette by k")
+        fig = px.line(k_table, x="k", y="Silhouette", markers=True, color_discrete_sequence=["#2e86c1"], title="Silhouette by k")
         fig.update_traces(line=dict(width=2.5), marker=dict(size=9))
         st.plotly_chart(fig, use_container_width=True)
     with c3:
         valid_k = k_table.dropna(subset=["Silhouette"])
-        best_k = int(valid_k.sort_values("Silhouette", ascending=False)["k"].iloc[0]) \
-            if not valid_k.empty else 4
+        best_k = int(valid_k.sort_values("Silhouette", ascending=False)["k"].iloc[0]) if not valid_k.empty else 4
         st.metric("Selected k", best_k)
         st.metric("Best Silhouette", round(valid_k["Silhouette"].max(), 4) if not valid_k.empty else "n/a")
         st.metric("Evaluated Range", f"k = {int(k_table['k'].min())} to {int(k_table['k'].max())}")
@@ -636,5 +536,27 @@ with tab3:
         pca = PCA(n_components=2, random_state=42)
         coords = pca.fit_transform(scaled)
         scatter = pd.DataFrame({
-            "PC1": coords[:, 0], "PC2": coords[:, 1],
-            "Segment": frame["CLUSTER"].
+            "PC1": coords[:, 0], 
+            "PC2": coords[:, 1],
+            "Segment": frame["CLUSTER"].astype(str),
+            "Risk": frame["CLUSTER"].map(dict(zip(profile["CLUSTER"], profile["RISK"])))
+        })
+        fig = px.scatter(scatter, x="PC1", y="PC2", color="Segment", hover_data=["Risk"], color_discrete_sequence=PALETTE, title="PCA Cluster Separation")
+        st.plotly_chart(fig, use_container_width=True)
+    with c5:
+        fig = px.bar(profile, x="SEGMENT", y="COMPOSITE", color="SEGMENT", color_discrete_map={row["SEGMENT"]: row["COLOR"] for _, row in profile.iterrows()}, text=profile["COMPOSITE"].round(2), title="Composite Score by Segment")
+        fig.update_layout(showlegend=False, yaxis_range=[0, 5], xaxis_title="")
+        st.plotly_chart(fig, use_container_width=True)
+
+    c6, c7 = st.columns(2)
+    with c6:
+        radar_cols = ["AWARENESS_SCORE", "ATTITUDE_SCORE", "BEHAVIOR_SCORE", "PARTICIPATION_SCORE"]
+        fig = go.Figure()
+        for _, row in profile.iterrows():
+            values = [row[c] for c in radar_cols] + [row[radar_cols[0]]]
+            theta = ["Awareness", "Attitude", "Behavior", "Participation", "Awareness"]
+            fig.add_trace(go.Scatterpolar(r=values, theta=theta, fill="toself", name=row["SEGMENT"]))
+        fig.update_layout(title="Segment Profiles", polar=dict(radialaxis=dict(range=[0, 5])))
+        st.plotly_chart(fig, use_container_width=True)
+    with c7:
+        disp = profile[["SEGMENT", "N", "SHARE", "COMPOSITE
