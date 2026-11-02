@@ -34,7 +34,7 @@ st.markdown(
     """
     <style>
     .stApp { background-color: #f4f7fb; }
-    .block-container { padding-top: 1.1rem; padding-bottom: 2rem; max-width: 1400px; }
+    .block-container { padding-top: 2rem; padding-bottom: 2rem; max-width: 1300px; }
     h1, h2, h3, h4 { color: #0f3352; font-family: 'Segoe UI', sans-serif; letter-spacing: 0.2px; }
     div[data-testid="stTabs"] button[role="tab"] {
         background-color: #ffffff;
@@ -374,8 +374,7 @@ def demographic_tests(frame):
     if not out.empty:
         out["Significance"] = out["p-value"].apply(lambda p: "p < 0.01" if p < 0.01 else ("p < 0.05" if p < 0.05 else "n.s."))
     return out
-
-st.sidebar.header("Data Source")
+    st.sidebar.header("Data Source")
 uploaded = st.sidebar.file_uploader("Upload CSV or Excel", type=["csv", "xlsx", "xls"])
 
 if uploaded is None:
@@ -559,6 +558,4 @@ with tab3:
         fig.update_layout(title="Segment Profiles", polar=dict(radialaxis=dict(range=[0, 5])))
         st.plotly_chart(fig, use_container_width=True)
     with c7:
-        st.dataframe(profile[["SEGMENT", "N", "SHARE", "RISK"]].round(2), use_container_width=True)
-
-    labels4 = run_kmeans
+        st.dataframe(profile[["SEGMENT", "N", "SHARE", "RISK"]
