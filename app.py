@@ -559,4 +559,6 @@ with tab3:
         fig.update_layout(title="Segment Profiles", polar=dict(radialaxis=dict(range=[0, 5])))
         st.plotly_chart(fig, use_container_width=True)
     with c7:
-        disp = profile[["SEGMENT", "N", "SHARE", "COMPOSITE
+        st.dataframe(profile[["SEGMENT", "N", "SHARE", "RISK"]].round(2), use_container_width=True)
+
+    labels4 = run_kmeans
