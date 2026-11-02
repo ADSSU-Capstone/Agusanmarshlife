@@ -534,11 +534,12 @@ with tab3:
     with c4:
         pca = PCA(n_components=2, random_state=42)
         coords = pca.fit_transform(scaled)
+        risk_map = dict(zip(profile.index, profile["RISK"]))
         scatter = pd.DataFrame({
             "PC1": coords[:, 0], 
             "PC2": coords[:, 1],
             "Segment": frame["CLUSTER"].astype(str),
-            "Risk": frame["CLUSTER"].map(dict(zip(profile["CLUSTER"], profile["RISK"])))
+            "Risk": frame["CLUSTER"].map(risk_map)
         })
         fig = px.scatter(scatter, x="PC1", y="PC2", color="Segment", hover_data=["Risk"], color_discrete_sequence=PALETTE, title="PCA Cluster Separation")
         st.plotly_chart(fig, use_container_width=True)
@@ -563,7 +564,6 @@ with tab3:
     labels4 = run_kmeans(scaled, 4)
     _, profile4 = profile_clusters(df, labels4)
     st.dataframe(profile4[["SEGMENT", "N", "SHARE", "COMPOSITE", "RISK"]].round(3), use_container_width=True)
-
 with tab4:
     metrics, fi, roc_data, cm_data, preds = classify(df)
     if metrics is None:
