@@ -510,25 +510,20 @@ with tab3:
     scaled = build_cluster_matrix(df)
     k_table, inertias = k_search(scaled)
 
-    # --- REVISED CLUSTERING LOGIC ---
-    # We force k=4 to align with Chapter 3 and to extract the actionable 'Non-Participants / High Risk' group.
-    # The elbow and silhouette plots remain visible to show the exploration process.
-    
+    best_k = 4 
+
     c1, c2, c3 = st.columns([1, 1, 1])
     with c1:
         fig = go.Figure(go.Scatter(x=list(inertias.keys()), y=list(inertias.values()), mode="lines+markers", line=dict(color="#0f3352", width=2.5), marker=dict(size=9)))
-        fig.update_layout(title="Elbow Curve", xaxis_title="k", yaxis_title="Inertia")
+        fig.update_layout(title="Elbow Curve", xaxis_title="k", yaxis_title="Inertia", margin=dict(l=20, r=20, t=40, b=20))
         st.plotly_chart(fig, use_container_width=True)
     with c2:
         fig = px.line(k_table, x="k", y="Silhouette", markers=True, color_discrete_sequence=["#2e86c1"], title="Silhouette by k")
         fig.update_traces(line=dict(width=2.5), marker=dict(size=9))
+        fig.update_layout(margin=dict(l=20, r=20, t=40, b=20))
         st.plotly_chart(fig, use_container_width=True)
     with c3:
         valid_k = k_table.dropna(subset=["Silhouette"])
-        
-        # FORCED TO 4 FOR METHODOLOGICAL ALIGNMENT
-        best_k = 4 
-        
         st.metric("Selected k", best_k)
         st.metric("Best Silhouette", round(valid_k["Silhouette"].max(), 4) if not valid_k.empty else "n/a")
         st.metric("Evaluated Range", f"k = {int(k_table['k'].min())} to {int(k_table['k'].max())}")
@@ -553,10 +548,10 @@ with tab3:
         st.plotly_chart(fig, use_container_width=True)
     with c5:
         fig = px.bar(profile, x="SEGMENT", y="COMPOSITE", color="SEGMENT", color_discrete_map={row["SEGMENT"]: row["COLOR"] for _, row in profile.iterrows()}, text=profile["COMPOSITE"].round(2), title="Composite Score by Segment")
-        fig.update_layout(showlegend=False, yaxis_range=[0, 5], xaxis_title="")
+        fig.update_layout(showlegend=False, yaxis_range=[0, 5], xaxis_title="", margin=dict(l=20, r=20, t=40, b=20))
         st.plotly_chart(fig, use_container_width=True)
 
-        c6, c7 = st.columns(2)
+    c6, c7 = st.columns(2)
     with c6:
         radar_cols = ["AWARENESS_SCORE", "ATTITUDE_SCORE", "BEHAVIOR_SCORE", "PARTICIPATION_SCORE"]
         fig = go.Figure()
@@ -567,4 +562,5 @@ with tab3:
         fig.update_layout(title="Segment Profiles", polar=dict(radialaxis=dict(range=[0, 5])))
         st.plotly_chart(fig, use_container_width=True)
     with c7:
-        st.dataframe(profile[["SEGMENT", "N", "SHARE", "RISK"]].round(2), use_container_width=True)
+        st.markdown("#### Cluster Summary Table")
+        st.dataframe(profile[["SEGMENT", "N", "SH
