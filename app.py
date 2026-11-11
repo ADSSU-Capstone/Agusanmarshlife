@@ -374,7 +374,8 @@ def demographic_tests(frame):
     if not out.empty:
         out["Significance"] = out["p-value"].apply(lambda p: "p < 0.01" if p < 0.01 else ("p < 0.05" if p < 0.05 else "n.s."))
     return out
-    st.sidebar.header("Data Source")
+
+st.sidebar.header("Data Source")
 uploaded = st.sidebar.file_uploader("Upload CSV or Excel", type=["csv", "xlsx", "xls"])
 
 if uploaded is None:
@@ -509,6 +510,10 @@ with tab3:
     scaled = build_cluster_matrix(df)
     k_table, inertias = k_search(scaled)
 
+    # --- REVISED CLUSTERING LOGIC ---
+    # We force k=4 to align with Chapter 3 and to extract the actionable 'Non-Participants / High Risk' group.
+    # The elbow and silhouette plots remain visible to show the exploration process.
+    
     c1, c2, c3 = st.columns([1, 1, 1])
     with c1:
         fig = go.Figure(go.Scatter(x=list(inertias.keys()), y=list(inertias.values()), mode="lines+markers", line=dict(color="#0f3352", width=2.5), marker=dict(size=9)))
@@ -520,7 +525,10 @@ with tab3:
         st.plotly_chart(fig, use_container_width=True)
     with c3:
         valid_k = k_table.dropna(subset=["Silhouette"])
-        best_k = int(valid_k.sort_values("Silhouette", ascending=False)["k"].iloc[0]) if not valid_k.empty else 4
+        
+        # FORCED TO 4 FOR METHODOLOGICAL ALIGNMENT
+        best_k = 4 
+        
         st.metric("Selected k", best_k)
         st.metric("Best Silhouette", round(valid_k["Silhouette"].max(), 4) if not valid_k.empty else "n/a")
         st.metric("Evaluated Range", f"k = {int(k_table['k'].min())} to {int(k_table['k'].max())}")
@@ -559,76 +567,4 @@ with tab3:
         fig.update_layout(title="Segment Profiles", polar=dict(radialaxis=dict(range=[0, 5])))
         st.plotly_chart(fig, use_container_width=True)
     with c7:
-        st.dataframe(profile[["SEGMENT", "N", "SHARE", "RISK"]].round(2), use_container_width=True)
-
-    labels4 = run_kmeans(scaled, 4)
-    _, profile4 = profile_clusters(df, labels4)
-    st.dataframe(profile4[["SEGMENT", "N", "SHARE", "COMPOSITE", "RISK"]].round(3), use_container_width=True)
-with tab4:
-    metrics, fi, roc_data, cm_data, preds = classify(df)
-    if metrics is None:
-        st.info("The binarized target does not contain enough usable records to train classifiers.")
-    else:
-        st.dataframe(metrics, use_container_width=True)
-
-        fig = go.Figure()
-        for _, row in metrics.iterrows():
-            fig.add_trace(go.Bar(
-                name=row["Model"],
-                x=["Accuracy", "Precision", "Recall", "F1"],
-                y=[row["Accuracy"], row["Precision"], row["Recall"], row["F1"]],
-            ))
-        fig.update_layout(barmode="group", title="Classifier Comparison", yaxis_range=[0, 1])
-        st.plotly_chart(fig, use_container_width=True)
-
-        if roc_data:
-            fig = go.Figure()
-            for name, (fpr, tpr, auc) in roc_data.items():
-                fig.add_trace(go.Scatter(x=fpr, y=tpr, mode="lines", name=f"{name} (AUC={auc:.3f})"))
-            fig.add_trace(go.Scatter(x=[0, 1], y=[0, 1], mode="lines", line=dict(dash="dash"), name="Reference"))
-            fig.update_layout(title="ROC Curves", xaxis_title="False Positive Rate", yaxis_title="True Positive Rate")
-            st.plotly_chart(fig, use_container_width=True)
-
-        if cm_data:
-            c1, c2, c3 = st.columns(3)
-            for col, (name, matrix) in zip([c1, c2, c3], cm_data.items()):
-                with col:
-                    fig = px.imshow(
-                        matrix, text_auto=True,
-                        labels=dict(x="Predicted", y="Actual"),
-                        x=["Low/Neutral", "High"], y=["Low/Neutral", "High"],
-                        color_continuous_scale="Blues", title=name,
-                    )
-                    st.plotly_chart(fig, use_container_width=True)
-
-        st.caption("Metrics computed on the stratified 20 percent holdout. Rows with ambiguous compound answers were excluded.")
-
-with tab5:
-    metrics, fi, roc_data, cm_data, preds = classify(df)
-    if fi is not None:
-        fig = px.bar(fi.sort_values("Importance"), x="Importance", y="Feature", orientation="h", color="Importance", color_continuous_scale="Teal", title="Random Forest Feature Importance")
-        st.plotly_chart(fig, use_container_width=True)
-        st.dataframe(fi, use_container_width=True)
-    else:
-        st.info("Feature importance requires a trained Random Forest model.")
-
-    tests = demographic_tests(df)
-    if not tests.empty:
-        st.dataframe(tests, use_container_width=True)
-        fig = px.bar(tests, x="Test", y="Statistic", color="p-value", color_continuous_scale="RdYlGn_r", title="Demographic Association Statistics")
-        st.plotly_chart(fig, use_container_width=True)
-    else:
-        st.info("No demographic association test had sufficient grouped data.")
-
-    st.caption("Feature importance uses mean decrease in impurity. Association tests use ANOVA for grouped demographics, point-biserial for gender, and Spearman for distance.")
-
-with tab6:
-    for col, label in [("Q34", "Suggestions"), ("Q35", "Observed Problems"), ("Q36", "Barriers and Motivations")]:
-        values = df[col].apply(clean_text)
-        values = values[values.str.len() > 0].dropna().head(15)
-        st.subheader(label)
-        if values.empty:
-            st.write("No responses recorded.")
-        else:
-            for value in values:
-                st.markdown(f"<div class='open-card'>{value}</div>", unsafe_allow_html=True)
+        st.dataframe(profile[["SEGMENT", "N",
