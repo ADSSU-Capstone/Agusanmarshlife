@@ -556,7 +556,7 @@ with tab3:
         fig.update_layout(showlegend=False, yaxis_range=[0, 5], xaxis_title="")
         st.plotly_chart(fig, use_container_width=True)
 
-    c6, c7 = st.columns(2)
+        c6, c7 = st.columns(2)
     with c6:
         radar_cols = ["AWARENESS_SCORE", "ATTITUDE_SCORE", "BEHAVIOR_SCORE", "PARTICIPATION_SCORE"]
         fig = go.Figure()
@@ -567,4 +567,4 @@ with tab3:
         fig.update_layout(title="Segment Profiles", polar=dict(radialaxis=dict(range=[0, 5])))
         st.plotly_chart(fig, use_container_width=True)
     with c7:
-        st.dataframe(profile[["SEGMENT", "N",
+        st.dataframe(profile[["SEGMENT", "N", "SHARE", "RISK"]].round(2), use_container_width=True)
