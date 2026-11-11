@@ -559,8 +559,3 @@ with tab3:
             values = [row[c] for c in radar_cols] + [row[radar_cols[0]]]
             theta = ["Awareness", "Attitude", "Behavior", "Participation", "Awareness"]
             fig.add_trace(go.Scatterpolar(r=values, theta=theta, fill="toself", name=row["SEGMENT"]))
-        fig.update_layout(title="Segment Profiles", polar=dict(radialaxis=dict(range=[0, 5])))
-        st.plotly_chart(fig, use_container_width=True)
-    with c7:
-        st.markdown("#### Cluster Summary Table")
-        st.dataframe(profile[["SEGMENT", "N", "SH
